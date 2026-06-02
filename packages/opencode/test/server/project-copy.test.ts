@@ -2,7 +2,6 @@ import { afterEach, describe, expect } from "bun:test"
 import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
-import { sql } from "drizzle-orm"
 import { Effect, Layer } from "effect"
 import { HttpClientResponse } from "effect/unstable/http"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
@@ -46,21 +45,6 @@ describe("project directories and copies endpoints", () => {
     () =>
       Effect.gen(function* () {
         const test = yield* TestInstance
-        yield* Database.Service.use(({ db }) =>
-          db
-            .run(
-              sql`
-            CREATE TABLE IF NOT EXISTS project_directory (
-              project_id text NOT NULL,
-              directory text NOT NULL,
-              type text NOT NULL,
-              time_created integer NOT NULL DEFAULT 0,
-              PRIMARY KEY (project_id, directory)
-            )
-          `,
-            )
-            .pipe(Effect.orDie),
-        )
         const current = yield* request(test.directory, "/project/current")
         const projectID = (yield* json<{ id: string }>(current)).id
         const base = `/project/${projectID}`

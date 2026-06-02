@@ -3,7 +3,6 @@ import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
 import { eq } from "drizzle-orm"
-import { sql } from "drizzle-orm"
 import { Effect, Fiber, Layer, Stream } from "effect"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
@@ -30,18 +29,6 @@ function abs(input: string) {
   return AbsolutePath.make(input)
 }
 
-const ensureProjectDirectoryTable = Database.Service.use(({ db }) =>
-  db.run(sql`
-    CREATE TABLE IF NOT EXISTS project_directory (
-      project_id text NOT NULL,
-      directory text NOT NULL,
-      type text NOT NULL,
-      time_created integer NOT NULL DEFAULT 0,
-      PRIMARY KEY (project_id, directory)
-    )
-  `),
-)
-
 async function initRepo(directory: string) {
   await $`git init`.cwd(directory).quiet()
   await $`git config core.fsmonitor false`.cwd(directory).quiet()
@@ -61,7 +48,6 @@ function setup() {
     const sourceDirectory = abs(yield* Effect.promise(() => fs.realpath(root.path)))
     const projectID = Project.ID.make("copy-project")
     const { db } = yield* Database.Service
-    yield* ensureProjectDirectoryTable
     yield* db
       .insert(ProjectTable)
       .values({ id: projectID, worktree: sourceDirectory, sandboxes: [], time_created: 1, time_updated: 1 })
@@ -199,7 +185,6 @@ describe("ProjectCopy", () => {
     Effect.gen(function* () {
       const copy = yield* ProjectCopy.Service
 
-      yield* ensureProjectDirectoryTable
       yield* copy.refresh({ projectID: Project.ID.make("missing-project") })
     }),
   )
